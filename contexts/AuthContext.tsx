@@ -27,11 +27,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check current session
-        authService.getCurrentUser().then((currentUser) => {
-            setUser(currentUser);
-            if (currentUser) {
-                authService.getSchoolProfile(currentUser.id).then(setSchoolProfile);
+        // Check current session (faster than getUser)
+        authService.getSession().then((session) => {
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                authService.getSchoolProfile(session.user.id).then(setSchoolProfile);
             }
             setLoading(false);
         }).catch(() => {

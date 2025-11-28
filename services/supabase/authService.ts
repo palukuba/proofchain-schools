@@ -54,6 +54,15 @@ export const authService = {
     },
 
     /**
+     * Get current session (from local cache, no network request if valid)
+     */
+    async getSession() {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        return session;
+    },
+
+    /**
      * Get current authenticated user
      */
     async getCurrentUser() {
