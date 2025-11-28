@@ -1,0 +1,5 @@
+{
+  "name": "CertiChain School Manager",
+  "description": "A comprehensive PWA for schools to design, issue, and manage digital diplomas secured on IPFS with integrated billing and KYC workflows.",
+  "requestFramePermissions": []
+}
