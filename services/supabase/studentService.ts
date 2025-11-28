@@ -60,6 +60,73 @@ export const studentService = {
     },
 
     /**
+     * Create a new student with Auth account
+     * This creates both the auth user and the student profile
+     */
+    async createStudentWithAuth(studentData: {
+        full_name: string;
+        email: string;
+        public_wallet?: string;
+        password?: string;
+    }) {
+        try {
+            // Generate a temporary password if not provided
+            const tempPassword = studentData.password || Math.random().toString(36).slice(-12) + 'Aa1!';
+
+            // Create auth user
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: studentData.email,
+                password: tempPassword,
+                email_confirm: true, // Auto-confirm email
+                user_metadata: {
+                    full_name: studentData.full_name,
+                    role: 'student'
+                }
+            });
+
+            if (authError) {
+                console.error('Error creating auth user:', authError);
+                throw new Error(`Failed to create auth user: ${authError.message}`);
+            }
+
+            if (!authData.user) {
+                throw new Error('No user returned from auth creation');
+            }
+
+            // Generate wallet if not provided
+            const publicWallet = studentData.public_wallet || '0x' + Math.random().toString(16).substr(2, 40);
+
+            // Create student profile
+            const { data: profileData, error: profileError } = await supabase
+                .from('student_profiles')
+                .insert([{
+                    user_id: authData.user.id,
+                    full_name: studentData.full_name,
+                    email: studentData.email,
+                    public_wallet: publicWallet
+                }])
+                .select()
+                .single();
+
+            if (profileError) {
+                console.error('Error creating student profile:', profileError);
+                // Try to clean up the auth user if profile creation fails
+                await supabase.auth.admin.deleteUser(authData.user.id);
+                throw new Error(`Failed to create student profile: ${profileError.message}`);
+            }
+
+            return {
+                user: authData.user,
+                profile: profileData,
+                tempPassword: tempPassword
+            };
+        } catch (error) {
+            console.error('Error in createStudentWithAuth:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Update student profile
      */
     async updateStudent(userId: string, updates: Partial<StudentProfile>) {

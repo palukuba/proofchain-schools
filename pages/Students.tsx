@@ -44,24 +44,21 @@ const Students: React.FC<StudentsProps> = ({ lang }) => {
 
   const handleAddStudent = async (data: StudentFormData) => {
     try {
-      // Generate a mock user_id and public_wallet for now
-      // In production, you'd create the auth user first
-      const mockUserId = 'student_' + Math.random().toString(36).substr(2, 9);
-      const publicWallet = data.public_wallet || '0x' + Math.random().toString(16).substr(2, 40);
-
-      await studentService.createStudent({
-        user_id: mockUserId,
+      const result = await studentService.createStudentWithAuth({
         full_name: data.full_name,
         email: data.email,
-        public_wallet: publicWallet,
+        public_wallet: data.public_wallet,
       });
+
+      // Show success message with temporary password
+      alert(`Student added successfully!\n\nEmail: ${result.profile.email}\nTemporary Password: ${result.tempPassword}\n\nPlease share these credentials with the student.`);
 
       await loadStudents();
       setIsModalOpen(false);
       reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding student:', error);
-      alert('Failed to add student');
+      alert(`Failed to add student: ${error.message || 'Unknown error'}`);
     }
   };
 
