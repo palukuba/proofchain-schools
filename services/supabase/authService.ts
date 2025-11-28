@@ -11,7 +11,8 @@ export const authService = {
             email,
             password,
             options: {
-                emailRedirectTo: `${window.location.origin}/login`,
+                // Force redirect to production URL as requested
+                emailRedirectTo: 'https://proofchain-schools.vercel.app/login',
             }
         });
 
@@ -66,7 +67,7 @@ export const authService = {
      */
     async resetPassword(email: string) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/#/reset-password`,
+            redirectTo: 'https://proofchain-schools.vercel.app/reset-password',
         });
 
         if (error) throw error;
