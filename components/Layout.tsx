@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, FileBadge, Settings, CreditCard,
-  ShieldCheck, Menu, GraduationCap, X, Sun, Moon, Globe
+  LayoutDashboard, Users, FileBadge, CreditCard,
+  ShieldCheck, Menu, GraduationCap, X, Sun, Moon, LogOut, ChevronDown
 } from 'lucide-react';
 import { Language, Theme } from '../types';
 import { useTranslation } from '../services/i18n';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,8 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, lang, setLang, theme, setTheme }) => {
   const t = useTranslation(lang);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path || (path === '/issuance' && location.pathname.startsWith('/issuance')) ? 'bg-black text-white' : 'hover:bg-base-200';
@@ -29,8 +32,25 @@ const Layout: React.FC<LayoutProps> = ({ children, lang, setLang, theme, setThem
     { path: '/templates', icon: FileBadge, label: t('templates') },
     { path: '/billing', icon: CreditCard, label: t('billing') },
     { path: '/kyc', icon: ShieldCheck, label: t('kyc') },
-    { path: '/settings', icon: Settings, label: t('settings') },
   ];
+
+  const languages = [
+    { code: Language.EN, label: 'English', flag: '🇬🇧' },
+    { code: Language.FR, label: 'Français', flag: '🇫🇷' },
+    { code: Language.SW, label: 'Kiswahili', flag: '🇹🇿' },
+    { code: Language.LI, label: 'Lingala', flag: '🇨🇩' }
+  ];
+
+  const currentLang = languages.find(l => l.code === lang) || languages[0];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <div className="drawer lg:drawer-open min-h-screen bg-base-200 font-sans">
@@ -50,38 +70,30 @@ const Layout: React.FC<LayoutProps> = ({ children, lang, setLang, theme, setThem
             </h1>
           </div>
           <div className="flex-none gap-3 flex items-center">
-            {/* Modern Language Selector */}
-            <div className="flex gap-1 p-1 bg-base-200 rounded-lg shadow-inner">
-              {[
-                { code: Language.EN, label: 'EN', flag: '🇬🇧' },
-                { code: Language.FR, label: 'FR', flag: '🇫🇷' },
-                { code: Language.SW, label: 'SW', flag: '🇹🇿' },
-                { code: Language.LI, label: 'LI', flag: '🇨🇩' }
-              ].map(({ code, label, flag }) => (
-                <button
-                  key={code}
-                  onClick={() => setLang(code)}
-                  className={`
-                    relative px-3 py-1.5 rounded-md text-xs font-semibold
-                    transition-all duration-300 ease-out flex items-center gap-1
-                    ${lang === code
-                      ? 'bg-black text-white shadow-lg scale-105'
-                      : 'hover:bg-base-300 text-base-content/70 hover:text-base-content'
-                    }
-                  `}
-                  style={{
-                    transform: lang === code ? 'translateY(-1px)' : 'translateY(0)'
-                  }}
-                >
-                  <span className="text-sm">{flag}</span>
-                  {label}
-                </button>
-              ))}
+            {/* Language Selector - Dropdown */}
+            <div className="dropdown dropdown-end">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-sm gap-2 font-normal">
+                <span className="text-lg">{currentLang.flag}</span>
+                <span className="hidden sm:inline">{currentLang.label}</span>
+                <ChevronDown size={14} className="opacity-50" />
+              </div>
+              <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40 mt-4">
+                {languages.map(({ code, label, flag }) => (
+                  <li key={code}>
+                    <button
+                      onClick={() => setLang(code)}
+                      className={lang === code ? 'active' : ''}
+                    >
+                      <span className="text-lg">{flag}</span> {label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Modern Theme Toggle - Dropdown */}
+            {/* Theme Toggle - Dropdown */}
             <div className="dropdown dropdown-end">
-              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle btn-sm">
                 {theme === Theme.LIGHT ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} className="text-indigo-500" />}
               </div>
               <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32 mt-4">
@@ -131,9 +143,18 @@ const Layout: React.FC<LayoutProps> = ({ children, lang, setLang, theme, setThem
             ))}
           </ul>
 
-          <div className="mt-auto px-4 py-4 bg-base-200 rounded-lg text-xs opacity-70">
-            <p>School ID: #883920</p>
-            <p className="mt-1">Version 1.0.0</p>
+          <div className="p-4 border-t border-base-200">
+            <button
+              onClick={handleLogout}
+              className="btn btn-ghost w-full justify-start gap-3 text-error hover:bg-error/10"
+            >
+              <LogOut size={20} />
+              {t('logout') || 'Logout'}
+            </button>
+
+            <div className="mt-4 px-2 text-xs opacity-50 text-center">
+              <p>Version 1.0.0</p>
+            </div>
           </div>
         </aside>
       </div>

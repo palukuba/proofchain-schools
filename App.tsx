@@ -1,21 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Students from './pages/Students';
-import Issuance from './pages/Issuance';
-import Templates from './pages/Templates';
-import KYC from './pages/KYC';
-import Billing from './pages/Billing';
-import Settings from './pages/Settings';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
 import { Language, Theme } from './types';
+
+// Lazy load pages
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Students = React.lazy(() => import('./pages/Students'));
+const Issuance = React.lazy(() => import('./pages/Issuance'));
+const Templates = React.lazy(() => import('./pages/Templates'));
+const KYC = React.lazy(() => import('./pages/KYC'));
+const Billing = React.lazy(() => import('./pages/Billing'));
+const Login = React.lazy(() => import('./pages/Login'));
+const SignUp = React.lazy(() => import('./pages/SignUp'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 
 function App() {
   const [lang, setLang] = useState<Language>(Language.EN);
@@ -25,37 +26,44 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  const PageLoader = () => (
+    <div className="flex items-center justify-center min-h-screen">
+      <span className="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  );
+
   return (
     <AuthProvider>
       <HashRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <Layout lang={lang} setLang={setLang} theme={theme} setTheme={setTheme}>
-                  <Routes>
-                    <Route path="/" element={<Dashboard lang={lang} />} />
-                    <Route path="/students" element={<Students lang={lang} />} />
-                    <Route path="/issuance" element={<Issuance lang={lang} />} />
-                    <Route path="/templates" element={<Templates />} />
-                    <Route path="/kyc" element={<KYC />} />
-                    <Route path="/billing" element={<Billing lang={lang} />} />
-                    <Route path="/settings" element={<Settings lang={lang} />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+            {/* Protected routes */}
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <Layout lang={lang} setLang={setLang} theme={theme} setTheme={setTheme}>
+                    <Routes>
+                      <Route path="/" element={<Dashboard lang={lang} />} />
+                      <Route path="/students" element={<Students lang={lang} />} />
+                      <Route path="/issuance" element={<Issuance lang={lang} />} />
+                      <Route path="/templates" element={<Templates />} />
+                      <Route path="/kyc" element={<KYC />} />
+                      <Route path="/billing" element={<Billing lang={lang} />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Suspense>
       </HashRouter>
     </AuthProvider>
   );
