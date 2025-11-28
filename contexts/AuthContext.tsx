@@ -27,30 +27,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let mounted = true;
+
+        // Safety timeout to prevent infinite loading
+        const timeoutId = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn('Auth check timed out, forcing loading to false');
+                setLoading(false);
+            }
+        }, 2000);
+
         // Check current session (faster than getUser)
         authService.getSession().then((session) => {
+            if (!mounted) return;
             setUser(session?.user ?? null);
             if (session?.user) {
-                authService.getSchoolProfile(session.user.id).then(setSchoolProfile);
+                authService.getSchoolProfile(session.user.id).then((profile) => {
+                    if (mounted) setSchoolProfile(profile);
+                });
             }
             setLoading(false);
-        }).catch(() => {
-            setLoading(false);
+        }).catch((err) => {
+            console.error('Auth check failed:', err);
+            if (mounted) setLoading(false);
+        }).finally(() => {
+            clearTimeout(timeoutId);
         });
 
         // Listen to auth changes
         const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                const profile = await authService.getSchoolProfile(session.user.id);
-                setSchoolProfile(profile);
-            } else {
-                setSchoolProfile(null);
+            if (!mounted) return;
+
+            // Only update if session actually changed or we are still loading
+            if (session?.user?.id !== user?.id || loading) {
+                setUser(session?.user ?? null);
+                if (session?.user) {
+                    const profile = await authService.getSchoolProfile(session.user.id);
+                    if (mounted) setSchoolProfile(profile);
+                } else {
+                    setSchoolProfile(null);
+                }
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => {
+            mounted = false;
+            clearTimeout(timeoutId);
             subscription.unsubscribe();
         };
     }, []);
