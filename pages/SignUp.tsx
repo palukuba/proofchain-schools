@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, Loader2, Building2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Loader2, Building2, Mail, Lock, Eye, EyeOff, Globe } from 'lucide-react';
 import { authService } from '../services/supabase/authService';
+import { walletManagementService } from '../services/cardano/walletManagementService';
+import { Language } from '../types';
+import { useTranslation } from '../services/i18n';
 
-const SignUp: React.FC = () => {
+interface SignUpProps {
+    lang: Language;
+    setLang: (lang: Language) => void;
+}
+
+const SignUp: React.FC<SignUpProps> = ({ lang, setLang }) => {
+    const t = useTranslation(lang);
     const [formData, setFormData] = useState({
         schoolName: '',
         email: '',
@@ -51,10 +60,22 @@ const SignUp: React.FC = () => {
         setLoading(true);
 
         try {
-            await authService.signUp(formData.email, formData.password, formData.schoolName);
+            // Generate Cardano Wallet
+            const wallet = await walletManagementService.generateWallet();
+            const encryptedMnemonic = walletManagementService.encryptMnemonic(wallet.mnemonic);
+
+            await authService.signUp(
+                formData.email,
+                formData.password,
+                formData.schoolName,
+                {
+                    address: wallet.address,
+                    encryptedMnemonic: encryptedMnemonic
+                }
+            );
 
             // Show success message and redirect
-            alert('Account created successfully! Please check your email to verify your account.');
+            alert('Account created successfully! A Cardano wallet has been automatically generated for your school.');
             navigate('/login');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
@@ -70,8 +91,23 @@ const SignUp: React.FC = () => {
         });
     };
 
+    const toggleLanguage = () => {
+        const langs = Object.values(Language);
+        const currentIndex = langs.indexOf(lang);
+        const nextIndex = (currentIndex + 1) % langs.length;
+        setLang(langs[nextIndex]);
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <div className="min-h-screen flex items-center justify-center bg-base-200 relative">
+            <button
+                onClick={toggleLanguage}
+                className="absolute top-4 right-4 btn btn-ghost btn-sm gap-2"
+            >
+                <Globe size={16} />
+                {lang.toUpperCase()}
+            </button>
+
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
                 <div className="card-body">
                     <div className="flex items-center justify-center mb-6">
@@ -81,9 +117,9 @@ const SignUp: React.FC = () => {
                         </h1>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-center mb-2">Create School Account</h2>
+                    <h2 className="text-2xl font-bold text-center mb-2">{t('createSchoolAccount')}</h2>
                     <p className="text-center text-sm opacity-70 mb-6">
-                        Join the blockchain-verified diploma network
+                        {t('joinNetwork')}
                     </p>
 
                     {error && (
@@ -95,7 +131,7 @@ const SignUp: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">School Name</span>
+                                <span className="label-text">{t('schoolName')}</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -116,7 +152,7 @@ const SignUp: React.FC = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Email</span>
+                                <span className="label-text">{t('email')}</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -137,7 +173,7 @@ const SignUp: React.FC = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Password</span>
+                                <span className="label-text">{t('password')}</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -165,7 +201,7 @@ const SignUp: React.FC = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Confirm Password</span>
+                                <span className="label-text">{t('confirmPassword')}</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -199,12 +235,12 @@ const SignUp: React.FC = () => {
                             {loading ? (
                                 <>
                                     <Loader2 className="animate-spin mr-2" size={20} />
-                                    Creating account...
+                                    {t('creatingAccount')}
                                 </>
                             ) : (
                                 <>
                                     <UserPlus size={20} className="mr-2" />
-                                    Create Account
+                                    {t('createAccount')}
                                 </>
                             )}
                         </button>
@@ -213,9 +249,9 @@ const SignUp: React.FC = () => {
                     <div className="divider">OR</div>
 
                     <p className="text-center text-sm opacity-70">
-                        Already have an account?{' '}
+                        {t('alreadyHaveAccount')}{' '}
                         <Link to="/login" className="link link-primary">
-                            Sign in
+                            {t('signIn')}
                         </Link>
                     </p>
                 </div>

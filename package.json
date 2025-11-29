@@ -9,24 +9,36 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@meshsdk/core": "^1.9.0-beta.87",
+    "@meshsdk/react": "^1.9.0-beta.87",
     "@supabase/supabase-js": "^2.86.0",
+    "crypto-js": "^4.2.0",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.66.1",
     "react-router-dom": "^7.9.6",
-    "recharts": "^3.5.0"
+    "recharts": "^3.5.0",
+    "util": "^0.12.5",
+    "vm-browserify": "^1.1.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "daisyui": "^5.5.5",
+    "events": "^3.3.0",
     "postcss": "^8.5.6",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
     "tailwindcss": "^4.1.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
+    "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-pwa": "^1.2.0"
   }
 }

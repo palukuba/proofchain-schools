@@ -1,9 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Loader2, Mail, Lock, Eye, EyeOff, Globe } from 'lucide-react';
+import { Language } from '../types';
+import { useTranslation } from '../services/i18n';
 
-const Login: React.FC = () => {
+interface LoginProps {
+    lang: Language;
+    setLang: (lang: Language) => void;
+}
+
+const Login: React.FC<LoginProps> = ({ lang, setLang }) => {
+    const t = useTranslation(lang);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -27,8 +35,23 @@ const Login: React.FC = () => {
         }
     };
 
+    const toggleLanguage = () => {
+        const langs = Object.values(Language);
+        const currentIndex = langs.indexOf(lang);
+        const nextIndex = (currentIndex + 1) % langs.length;
+        setLang(langs[nextIndex]);
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <div className="min-h-screen flex items-center justify-center bg-base-200 relative">
+            <button
+                onClick={toggleLanguage}
+                className="absolute top-4 right-4 btn btn-ghost btn-sm gap-2"
+            >
+                <Globe size={16} />
+                {lang.toUpperCase()}
+            </button>
+
             <div className="card w-full max-w-md bg-base-100 shadow-xl">
                 <div className="card-body">
                     <div className="flex items-center justify-center mb-6">
@@ -38,7 +61,7 @@ const Login: React.FC = () => {
                         </h1>
                     </div>
 
-                    <h2 className="text-2xl font-bold text-center mb-6">School Login</h2>
+                    <h2 className="text-2xl font-bold text-center mb-6">{t('loginTitle')}</h2>
 
                     {error && (
                         <div className="alert alert-error mb-4">
@@ -49,7 +72,7 @@ const Login: React.FC = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Email</span>
+                                <span className="label-text">{t('email')}</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -69,9 +92,9 @@ const Login: React.FC = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Password</span>
+                                <span className="label-text">{t('password')}</span>
                                 <Link to="/forgot-password" className="label-text-alt link link-hover link-primary">
-                                    Forgot password?
+                                    {t('forgotPassword')}
                                 </Link>
                             </label>
                             <div className="relative">
@@ -105,12 +128,12 @@ const Login: React.FC = () => {
                             {loading ? (
                                 <>
                                     <Loader2 className="animate-spin mr-2" size={20} />
-                                    Signing in...
+                                    {t('signingIn')}
                                 </>
                             ) : (
                                 <>
                                     <LogIn size={20} className="mr-2" />
-                                    Sign In
+                                    {t('signIn')}
                                 </>
                             )}
                         </button>
@@ -119,9 +142,9 @@ const Login: React.FC = () => {
                     <div className="divider">OR</div>
 
                     <p className="text-center text-sm opacity-70">
-                        Don't have an account?{' '}
+                        {t('noAccount')}{' '}
                         <Link to="/signup" className="link link-primary">
-                            Create one
+                            {t('createAccount')}
                         </Link>
                     </p>
                 </div>

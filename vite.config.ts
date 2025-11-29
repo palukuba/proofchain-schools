@@ -2,6 +2,7 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -12,11 +13,20 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      nodePolyfills({
+        include: ['buffer', 'crypto', 'stream', 'util', 'vm', 'process', 'events'],
+        globals: {
+          Buffer: true,
+          global: true,
+          process: true,
+        },
+      }),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB (Mesh SDK is large)
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -70,7 +80,7 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
       alias: {
@@ -86,6 +96,9 @@ export default defineConfig(({ mode }) => {
             'supabase-vendor': ['@supabase/supabase-js'],
           }
         }
+      },
+      commonjsOptions: {
+        transformMixedEsModules: true,
       }
     }
   };

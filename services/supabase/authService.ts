@@ -5,7 +5,7 @@ export const authService = {
     /**
      * Sign up with email and password
      */
-    async signUp(email: string, password: string, schoolName: string) {
+    async signUp(email: string, password: string, schoolName: string, walletData?: { address: string, encryptedMnemonic: string }) {
         // Create auth user
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
@@ -21,7 +21,7 @@ export const authService = {
 
         // Create school profile
         try {
-            await this.createSchoolProfile(authData.user.id, schoolName, email);
+            await this.createSchoolProfile(authData.user.id, schoolName, email, walletData);
         } catch (profileError) {
             // If profile creation fails, we should ideally delete the auth user
             // but Supabase doesn't allow that from client side
@@ -96,9 +96,10 @@ export const authService = {
     /**
      * Create school profile
      */
-    async createSchoolProfile(userId: string, schoolName: string, email: string): Promise<SchoolProfile> {
-        // Generate a mock public wallet address (in production, this should be generated properly)
-        const publicWallet = '0x' + Math.random().toString(16).substr(2, 40);
+    async createSchoolProfile(userId: string, schoolName: string, email: string, walletData?: { address: string, encryptedMnemonic: string }): Promise<SchoolProfile> {
+        // Use provided wallet or generate a placeholder (should not happen with new flow)
+        const publicWallet = walletData?.address || '0x' + Math.random().toString(16).substr(2, 40);
+        const encryptedMnemonic = walletData?.encryptedMnemonic || null;
 
         const { data, error } = await supabase
             .from('school_profiles')
@@ -107,6 +108,7 @@ export const authService = {
                 name: schoolName,
                 email: email,
                 public_wallet: publicWallet,
+                encrypted_mnemonic: encryptedMnemonic,
                 kyc_status: 'pending',
             }])
             .select()

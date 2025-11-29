@@ -1,6 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import { Buffer } from 'buffer';
+
+// Polyfill Buffer for the browser
+if (typeof window !== 'undefined') {
+  window.Buffer = Buffer;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.Buffer = Buffer;
+}
+
 import App from './App';
 
 const rootElement = document.getElementById('root');
