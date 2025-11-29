@@ -1,4 +1,5 @@
 import { BlockfrostProvider, MeshTxBuilder, AssetMetadata } from '@meshsdk/core';
+import { policyService } from './policyService';
 
 const BLOCKFROST_PROJECT_ID = import.meta.env.VITE_BLOCKFROST_PROJECT_ID;
 
@@ -36,7 +37,9 @@ export const cardanoService = {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to upload to IPFS');
+            const errorText = await response.text();
+            console.error('IPFS upload failed:', errorText);
+            throw new Error(`Failed to upload to IPFS: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -68,7 +71,9 @@ export const cardanoService = {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to upload metadata to IPFS');
+            const errorText = await response.text();
+            console.error('Metadata IPFS upload failed:', errorText);
+            throw new Error(`Failed to upload metadata to IPFS: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -100,107 +105,87 @@ export const cardanoService = {
         }
 
         try {
-            // 1. Obtenir les informations du wallet
+            // 1. Get wallet details
             const utxos = await wallet.getUtxos();
             const changeAddress = await wallet.getChangeAddress();
-            const usedAddresses = await wallet.getUsedAddresses();
 
             if (!utxos || utxos.length === 0) {
                 throw new Error('No UTXOs available. Please fund your wallet with ADA.');
             }
 
-            // 2. Créer la politique de minting (Native Script)
-            // Note: Pour une vraie implémentation, utilisez policyService pour gérer les politiques persistantes
-            const { paymentCredential } = await wallet.getRewardAddresses().then((addrs: string[]) => {
-                // Fallback: utiliser la première adresse utilisée
-                return { paymentCredential: { hash: 'temp_hash' } };
-            });
+            // 2. Get or create the minting policy
+            const { policyId, script } = await policyService.getOrCreateSchoolPolicy(diplomaData.schoolId, wallet);
 
-            // Pour simplifier, on utilise un script simple basé sur le wallet
-            // Dans une vraie implémentation, extraire le hash de la clé publique
-            const forgingScript = {
-                type: 'all',
-                scripts: [
-                    {
-                        type: 'sig',
-                        keyHash: usedAddresses[0].substring(2, 58) // Extraction simplifiée
-                    }
-                ]
-            };
+            // 3. Generate unique asset name (using a more robust method)
+            const assetName = `CertiChain_${diplomaData.studentId}_${Date.now()}`;
+            const assetNameHex = Buffer.from(assetName, 'utf8').toString('hex');
 
-            // 3. Générer le nom d'asset unique
-            const timestamp = Date.now();
-            const assetName = `Diploma_${diplomaData.studentId}_${timestamp}`;
-
-            // 4. Créer les métadonnées CIP-25 complètes
-            const assetMetadata = {
+            // 4. Create CIP-25 compliant metadata
+            const metadata: AssetMetadata = {
                 name: `Diploma - ${diplomaData.studentName}`,
                 image: ipfsImage,
-                description: `Official ${diplomaData.courseLevel || 'Academic'} Diploma in ${diplomaData.courseName}`,
+                description: `Official ${diplomaData.courseLevel || 'Academic'} Diploma in ${diplomaData.courseName} from ${diplomaData.schoolName || 'our institution'}.`,
+                mediaType: 'image/png', // Or appropriate type
+                files: [{
+                    name: 'Diploma Image',
+                    mediaType: 'image/png', // Or appropriate type
+                    src: ipfsImage,
+                }],
 
-                // Student Information
-                student: {
-                    name: diplomaData.studentName,
-                    id: diplomaData.studentId
-                },
-
-                // Academic Information
-                academic: {
-                    course: diplomaData.courseName,
-                    level: diplomaData.courseLevel || 'Not specified',
-                    faculty: diplomaData.faculty || 'Not specified',
-                    graduationDate: diplomaData.graduationDate || new Date().toISOString().split('T')[0]
-                },
-
-                // Issuer Information
-                issuer: {
-                    name: diplomaData.schoolName || 'Educational Institution',
-                    id: diplomaData.schoolId
-                },
-
-                // Certificate Information
-                certificate: {
-                    number: diplomaData.diplomaNumber || `CERT-${timestamp}`,
-                    issuedAt: new Date().toISOString(),
-                    standard: 'CIP-25',
-                    version: '1.0',
-                    blockchain: 'Cardano'
-                },
-
+                // Custom Diploma Standard
+                "standard": "CertiChain Diploma v1.0",
+                "student_name": diplomaData.studentName,
+                "student_id": diplomaData.studentId,
+                "course_name": diplomaData.courseName,
+                "course_level": diplomaData.courseLevel || 'N/A',
+                "faculty": diplomaData.faculty || 'N/A',
+                "graduation_date": diplomaData.graduationDate || new Date().toISOString().split('T')[0],
+                "diploma_number": diplomaData.diplomaNumber || `CERT-${Date.now()}`,
+                "issuer_name": diplomaData.schoolName || 'Educational Institution',
+                "issuer_id": diplomaData.schoolId,
                 ...additionalMetadata
             };
 
-            // 5. Construire la transaction avec MeshTxBuilder
+            // 5. Build the transaction with MeshTxBuilder
             const txBuilder = new MeshTxBuilder({
                 fetcher: provider,
                 submitter: provider,
             });
 
-            // Note: L'API exacte peut varier selon la version de Mesh SDK
-            // Cette implémentation est basée sur la documentation Mesh v1.9
             const unsignedTx = await txBuilder
                 .selectUtxosFrom(utxos)
-                .txOut(changeAddress, [
-                    {
-                        unit: 'lovelace',
-                        quantity: '2000000' // 2 ADA minimum pour l'UTXO avec le NFT
-                    }
-                ])
+                .mint(1, policyId, assetNameHex)
+                .metadataValue(721, { [policyId]: { [assetNameHex]: metadata } })
                 .changeAddress(changeAddress)
                 .complete();
 
-            // 6. Signer la transaction
-            const signedTx = await wallet.signTx(unsignedTx);
+            // 6. Sign the transaction
+            const signedTx = await wallet.signTx(unsignedTx, true); // Partial sign if needed
 
-            // 7. Soumettre la transaction
+            // 7. Submit the transaction
             const txHash = await wallet.submitTx(signedTx);
 
             console.log('✅ NFT Diploma minted successfully! Transaction Hash:', txHash);
             return txHash;
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Error minting diploma NFT:', error);
-            throw new Error(`Failed to mint diploma: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            let errorMessage = 'Failed to mint diploma.';
+            if (error?.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+
+            // Provide more specific user-friendly messages
+            if (errorMessage.includes('UTxO Balance Insufficient')) {
+                errorMessage = 'Insufficient funds. Please ensure your wallet has enough ADA to cover the transaction fees.';
+            } else if (errorMessage.includes('User declined the transaction')) {
+                errorMessage = 'Transaction was cancelled by the user.';
+            }
+
+            throw new Error(errorMessage);
         }
     }
 };
